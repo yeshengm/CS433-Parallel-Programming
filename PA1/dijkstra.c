@@ -45,7 +45,7 @@ int main(void) {
    int *mat, *dist, *pred;
 
    /* Initialization */
-   printf("How many vertices?\n");
+   // printf("How many vertices?\n");
    scanf("%d", &n);
    mat = malloc(n*n*sizeof(int));	// mat[i][j]: dist from i to j
    dist = malloc(n*sizeof(int));	// dist[i]: estimated dist from src to i
@@ -56,10 +56,14 @@ int main(void) {
    /* Path finding */
    Dijkstra(mat, dist, pred, n);
 
-   printf("The distance from 0 to each vertex is:\n");
-   Print_dists(dist, n);
-   printf("The shortest path from 0 to each vertex is:\n");
-   Print_paths(pred, n);
+   for (int i = 0; i < n; ++i) {
+	 printf("%d ", dist[i]);
+   }
+   printf("\n");
+   // printf("The distance from 0 to each vertex is:\n");
+   // Print_dists(dist, n);
+   // printf("The shortest path from 0 to each vertex is:\n");
+   // Print_paths(pred, n);
 
    free(mat);
    free(dist);
@@ -133,10 +137,10 @@ void Dijkstra(int mat[], int dist[], int pred[], int n) {
    /* whose distance to 0 is known           */
    for (i = 1; i < n; i++) {
       u = Find_min_dist(dist, known, n);
-
+	  printf("min is %d\n", dist[u]);
       known[u] = 1;
 
-      for (v = 1; v < n; v++) 
+      for (v = 1; v < n; v++) {
          if (!known[v]) {
             new_dist = dist[u] + mat[u*n + v];
             if (new_dist < dist[v]) {
@@ -144,6 +148,7 @@ void Dijkstra(int mat[], int dist[], int pred[], int n) {
                pred[v] = u;
             }
          }
+	  }
 
 #     ifdef DEBUG
       printf("i = %d\n", i);

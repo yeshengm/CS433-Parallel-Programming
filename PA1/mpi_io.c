@@ -54,55 +54,156 @@
 int Read_n(int my_rank, MPI_Comm comm);
 MPI_Datatype Build_blk_col_type(int n, int loc_n);
 void Read_matrix(int loc_mat[], int n, int loc_n, 
-      MPI_Datatype blk_col_mpi_t, int my_rank, MPI_Comm comm);
+              MPI_Datatype blk_col_mpi_t, int my_rank, MPI_Comm comm);
 void Print_local_matrix(int loc_mat[], int n, int loc_n, int my_rank);
 void Print_matrix(int loc_mat[], int n, int loc_n, 
-      MPI_Datatype blk_col_mpi_t, int my_rank, MPI_Comm comm);
+              MPI_Datatype blk_col_mpi_t, int my_rank, MPI_Comm comm);
 
-int main(int argc, char* argv[]) {
-   int *loc_mat;
-   int n, loc_n, p, my_rank;
-   MPI_Comm comm;
-   MPI_Datatype blk_col_mpi_t;
+void Dijkstra(int loc_mat[], int loc_dist[], int loc_pred[], int loc_n, int my_rank, int n);
+void Print_dist(int dist[], int n);
+void Print_path(int pred[], int dst, int n);
+
+int main(int argc, char* argv[])
+{
+    int *loc_mat;
+    int n, loc_n, p, my_rank;
+    MPI_Comm comm;
+    MPI_Datatype blk_col_mpi_t;
 #  ifdef DEBUG
-   int i, j;
+    int i, j;
 #  endif
 
-   MPI_Init(&argc, &argv);
-   comm = MPI_COMM_WORLD;
-   MPI_Comm_size(comm, &p);
-   MPI_Comm_rank(comm, &my_rank);
+    MPI_Init(&argc, &argv);
+    comm = MPI_COMM_WORLD;
+    MPI_Comm_size(comm, &p);
+    MPI_Comm_rank(comm, &my_rank);
+  
+    n = Read_n(my_rank, comm); // Read the size of matrix in thread 0
+    loc_n = n/p;				  // local matrix and cols
+    loc_mat = malloc(n*loc_n*sizeof(int));
+
+#   ifdef DEBUG
+    printf("Proc %d > p = %d, n = %d, loc_n = %d\n", my_rank, p, n, loc_n);
+    /* This ensures that the matrix elements are initialized when */
+    /* debugging.  It shouldn't be necessary */
+    for (i = 0; i < n; i++)
+        for (j = 0; j < loc_n; j++)
+           loc_mat[i*loc_n + j] = -1;
+#   endif   
    
-   n = Read_n(my_rank, comm);
-   loc_n = n/p;
-   loc_mat = malloc(n*loc_n*sizeof(int));
+    /* Build the special MPI_Datatype before doing matrix I/O */
+    blk_col_mpi_t = Build_blk_col_type(n, loc_n);
+    Read_matrix(loc_mat, n, loc_n, blk_col_mpi_t, my_rank, comm);
+    // Print_local_matrix(loc_mat, n, loc_n, my_rank);
 
-#  ifdef DEBUG
-   printf("Proc %d > p = %d, n = %d, loc_n = %d\n",
-         my_rank, p, n, loc_n);
+	// Print help info in master thread
+    if (my_rank == 0) {
+		printf("======= MPI Dijkstra =======\n");
+		printf(" totol threads: %d\n", p);
+    }
+	
 
-   /* This ensures that the matrix elements are initialized when */
-   /* debugging.  It shouldn't be necessary */
-   for (i = 0; i < n; i++)
-      for (j = 0; j < loc_n; j++)
-         loc_mat[i*loc_n + j] = -1;
-#  endif   
-   
-   /* Build the special MPI_Datatype before doing matrix I/O */
-   blk_col_mpi_t = Build_blk_col_type(n, loc_n);
-
-   Read_matrix(loc_mat, n, loc_n, blk_col_mpi_t, my_rank, comm);
-   Print_local_matrix(loc_mat, n, loc_n, my_rank);
-   Print_matrix(loc_mat, n, loc_n, blk_col_mpi_t, my_rank, comm);
-
-   free(loc_mat);
-
-   /* When you're done with the MPI_Datatype, free it */
-   MPI_Type_free(&blk_col_mpi_t);
-
-   MPI_Finalize();
-   return 0;
+	int *loc_dist = malloc(loc_n * sizeof(int));
+	int *loc_pred = malloc(loc_n * sizeof(int));
+	
+	Dijkstra(loc_mat, loc_dist, loc_pred, loc_n, my_rank, n);
+	
+	int *dist = malloc(n * sizeof(int));
+	int *pred = malloc(n * sizeof(int));
+	MPI_Gather(loc_dist, loc_n, MPI_INT, dist, loc_n, MPI_INT, 0, comm);
+	MPI_Gather(loc_pred, loc_n, MPI_INT, pred, loc_n, MPI_INT, 0, comm);
+	if (my_rank == 0) { Print_dist(dist, n); }
+	if (my_rank == 0) {
+		for (int i = 0; i < 9; ++i)
+			Print_path(pred, i, n);
+	}
+    free(loc_mat);
+	free(loc_dist);
+	free(loc_pred);
+    MPI_Type_free(&blk_col_mpi_t);
+    MPI_Finalize();
+    return 0;
 }  /* main */
+
+void Print_path(int pred[], int dst, int n)
+{
+	printf("path to %d: ", dst);
+	int *stack = malloc(n*sizeof(int));
+	int top = 0;
+	
+	while (dst != 0) {
+		stack[top++] = dst;
+		dst = pred[dst];
+	}
+	printf("0");
+	while (--top >= 0)
+		printf("->%d", stack[top]);
+	printf("\n");
+}
+
+void Print_dist(int dist[], int n)
+{
+	printf("cost: ");
+	for (int i = 0; i < n; ++i)
+		printf("%d ", dist[i]);
+	printf("\n");
+}
+
+void Find_min_loc_dist(int loc_dist[], int loc_known[], int loc_n, int my_min[], int my_rank)
+{
+	int loc_u = -1;
+	int loc_min_dist = INFINITY;
+	for (int loc_v = 0; loc_v < loc_n; loc_v++) {
+		if (!loc_known[loc_v]) {
+			if (loc_dist[loc_v] < loc_min_dist) {
+				loc_u = loc_v;
+				loc_min_dist = loc_dist[loc_v];
+			}
+		}
+	}
+
+	if (loc_u == -1) {
+		my_min[0] = INFINITY;
+		my_min[1] = 0;
+		return;
+	}
+	my_min[0] = loc_dist[loc_u];
+	my_min[1] = loc_u + my_rank*loc_n;
+}
+
+void Dijkstra(int loc_mat[], int loc_dist[], int loc_pred[], int loc_n, int my_rank, int n)
+{
+	int i, loc_u, loc_v, *loc_known;
+	
+	loc_known = malloc(loc_n * sizeof(int));
+	for (loc_v = 0; loc_v < loc_n; loc_v++) {
+		loc_dist[loc_v] = loc_mat[0*loc_n + loc_v];
+		loc_known[loc_v] = 0;
+		loc_pred[loc_v] = 0;
+	}
+	if (my_rank == 0)
+		loc_known[0] = 1;
+	
+	for (int j = 1; j < n; j++) {
+		int my_min[2], glbl_min[2];
+		Find_min_loc_dist(loc_dist, loc_known, loc_n, my_min, my_rank);
+		MPI_Allreduce(my_min, glbl_min, 1, MPI_2INT, MPI_MINLOC, MPI_COMM_WORLD);
+		if (my_rank == glbl_min[1]/loc_n) {
+			loc_known[glbl_min[1]%loc_n] = 1;
+		}
+		int new_loc_dist;
+		for (loc_v = 0; loc_v < loc_n; loc_v++) {
+			if (!loc_known[loc_v]) {
+				new_loc_dist = glbl_min[0] + loc_mat[glbl_min[1]*loc_n + loc_v];	
+				if (new_loc_dist < loc_dist[loc_v]) {
+					loc_dist[loc_v] = new_loc_dist;
+					loc_pred[loc_v] = glbl_min[1];
+				}
+			}
+		}
+	}
+	free(loc_known);
+}
 
 
 /*---------------------------------------------------------------------
@@ -115,7 +216,7 @@ int main(int argc, char* argv[]) {
  */
 int Read_n(int my_rank, MPI_Comm comm) {
    int n;
-
+   // scanf only makes sense in thread 0
    if (my_rank == 0)
       scanf("%d", &n);
    MPI_Bcast(&n, 1, MPI_INT, 0, comm);
@@ -207,7 +308,7 @@ void Print_local_matrix(int loc_mat[], int n, int loc_n, int my_rank) {
          if (loc_mat[i*loc_n + j] == INFINITY)
             sprintf(cp, " i ");
          else
-            sprintf(cp, "%2d ", loc_mat[i*loc_n + j]);
+            sprintf(cp, "%3d ", loc_mat[i*loc_n + j]);
          cp = temp + strlen(temp);
       }
       sprintf(cp, "\n");
@@ -243,7 +344,7 @@ void Print_matrix(int loc_mat[], int n, int loc_n,
             if (mat[i*n + j] == INFINITY)
                printf(" i ");
             else
-               printf("%2d ", mat[i*n + j]);
+               printf("%3d ", mat[i*n + j]);
          printf("\n");
       }
       free(mat);

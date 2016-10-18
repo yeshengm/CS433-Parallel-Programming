@@ -44,15 +44,16 @@ int main(void) {
    int  n;
    int *mat, *dist, *pred;
 
+   /* Initialization */
    printf("How many vertices?\n");
    scanf("%d", &n);
-   mat = malloc(n*n*sizeof(int));
-   dist = malloc(n*sizeof(int));
-   pred = malloc(n*sizeof(int));
-
+   mat = malloc(n*n*sizeof(int));	// mat[i][j]: dist from i to j
+   dist = malloc(n*sizeof(int));	// dist[i]: estimated dist from src to i
+   pred = malloc(n*sizeof(int));	// pred[i]: predecessor of i in path
    printf("Enter the matrix\n");
    Read_matrix(mat, n);
 
+   /* Path finding */
    Dijkstra(mat, dist, pred, n);
 
    printf("The distance from 0 to each vertex is:\n");

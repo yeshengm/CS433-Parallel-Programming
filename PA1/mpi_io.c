@@ -69,6 +69,7 @@ int main(int argc, char* argv[])
     int n, loc_n, p, my_rank;
     MPI_Comm comm;
     MPI_Datatype blk_col_mpi_t;
+	
 #  ifdef DEBUG
     int i, j;
 #  endif
@@ -77,7 +78,11 @@ int main(int argc, char* argv[])
     comm = MPI_COMM_WORLD;
     MPI_Comm_size(comm, &p);
     MPI_Comm_rank(comm, &my_rank);
-  
+	if (my_rank == 0) {
+		if (freopen(argv[1], "r", stdin) == 0)
+			printf("err\n");
+		printf("reading file %s\n", argv[1]);
+	}
     n = Read_n(my_rank, comm); // Read the size of matrix in thread 0
     loc_n = n/p;				  // local matrix and cols
     loc_mat = malloc(n*loc_n*sizeof(int));
@@ -114,7 +119,7 @@ int main(int argc, char* argv[])
 	MPI_Gather(loc_pred, loc_n, MPI_INT, pred, loc_n, MPI_INT, 0, comm);
 	if (my_rank == 0) { Print_dist(dist, n); }
 	if (my_rank == 0) {
-		for (int i = 0; i < 9; ++i)
+		for (int i = 0; i < n; ++i)
 			Print_path(pred, i, n);
 	}
     free(loc_mat);

@@ -50,7 +50,7 @@ int main(void) {
    mat = malloc(n*n*sizeof(int));	// mat[i][j]: dist from i to j
    dist = malloc(n*sizeof(int));	// dist[i]: estimated dist from src to i
    pred = malloc(n*sizeof(int));	// pred[i]: predecessor of i in path
-   printf("Enter the matrix\n");
+   // printf("Enter the matrix\n");
    Read_matrix(mat, n);
 
    /* Path finding */
@@ -137,7 +137,6 @@ void Dijkstra(int mat[], int dist[], int pred[], int n) {
    /* whose distance to 0 is known           */
    for (i = 1; i < n; i++) {
       u = Find_min_dist(dist, known, n);
-	  printf("min is %d\n", dist[u]);
       known[u] = 1;
 
       for (v = 1; v < n; v++) {

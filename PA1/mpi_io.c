@@ -178,7 +178,7 @@ void Find_min_loc_dist(int loc_dist[], int loc_known[], int loc_n, int my_min[],
 
 void Dijkstra(int loc_mat[], int loc_dist[], int loc_pred[], int loc_n, int my_rank, int n)
 {
-	int i, loc_u, loc_v, *loc_known;
+	int loc_v, *loc_known;
 	
 	loc_known = malloc(loc_n * sizeof(int));
 	for (loc_v = 0; loc_v < loc_n; loc_v++) {

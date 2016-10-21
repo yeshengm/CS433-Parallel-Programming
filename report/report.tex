@@ -1,4 +1,32 @@
 \documentclass{article}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{float}
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{
+	frame=single,
+	language=C,
+	belowskip=3mm,
+	showstringspaces=false,
+	columns=flexible,
+	captionpos=b,
+	basicstyle={\small\ttfamily},
+	numbers=left,
+	numbersep=5pt,
+	%numbers=none,
+	numberstyle=\tiny\color{gray},
+	keywordstyle=\color{blue},
+	commentstyle=\color{dkgreen},
+	stringstyle=\color{mauve},
+	breaklines=true,
+	breakatwhitespace=true,
+	tabsize=4
+}
+
 \input kvmacros
 \sloppy
 \begin{document}
@@ -8,25 +36,79 @@
 \maketitle
 
 
-\section{Abstract}
-The known Dijkstra algorithm is used to find the single-source shortest path problem. And what we have done in this project is to parallize it in order to complete the task with higher efficiency.
+\begin{abstract}
+	The known Dijkstra algorithm is used to find the single-source shortest path problem. And what we have done in this project is to parallelize it in order to complete the task with higher efficiency.
+\end{abstract}
+
 
 \section{Introduction}
-First let's shed a light on how serial Dijkstra algorithm work. The main body is n-1 iterations. In each iteration, the algorithm selects the vectex which has the smallest distance from the origin vectex among those unknown vectexs. Then it will be put in the known list and all its adjacent vectex will be updated for next iteratoin.\\
-The general idea behind the partition is not to completely seperate the whole algorithm, which will be too complex, but to decompose one single step- to find the min distance among the remaining vertex. During this process, we can divide the whole vertex set into n parts. And each progress finds the one with smallest distance respectively. And progress 0 does the reduce work- to find the desired one among those chosen one.  
+First let's shed a light on how serial Dijkstra algorithm work. The main body is n-1 iterations. In each iteration, the algorithm selects the vertex which has the smallest distance from the origin vertex among those unknown vertices. Then it will be put in the known list and all its adjacent vertices will be updated for next iteration.\\
+The general idea behind the partition is not to completely separate the whole algorithm, which will be too complex, but to decompose one single step- to find the min distance among the remaining vertex. During this process, we can divide the whole vertex set into n parts. And each progress finds the one with smallest distance respectively. And progress 0 does the reduce work- to find the desired one among those chosen one.  
 
 \section{Implementation}
-\subsection{Tools}
-\textbf{C language\\OpenMPI library\\Slurm in Linux environment}
+\subsection{Build and Test Automation}
+During building the whole project, we use the tool GUN Makefile, which is a software for auto-build of C programs. Also we write a shell script to test the program, which takes two arguments, i.e. data size and thread number. Example usage can be \verb|sh test.sh 1000 10|.
+\subsection{Implementation of Parallel Dijkstra Algorithm}
+\subsubsection{MPI API}
+We use several MPI APIs to implement this algorithm, type signatures are left over for simplicity:
+\begin{itemize}
+	\item \verb|MPI_Init| mark the entry of MPI code
+	\item \verb|MPI_Comm_size| get the size of MPI communication space
+	\item \verb|MPI_Comm_rank| get the rank of current thread
+	\item \verb|MPI_Allreduce| similar to the reduce function in functional programming languages
+	\item \verb|MPI_Gather| gather arrays in different threads to form a large array
+\end{itemize}
+\subsubsection{Core implementation}
+The code for parallel Dijkstra is mainly shown in the \verb|Dijkstra| function shown in source code. Before execution of this function, we have already partitioned the input data into separate matrices \verb|loc_mat|. All the executions of \verb|Dijkstra| should be make on these matrices.
+
+Next, we will explain how this \verb|Dijkstra| function actually works. In fact, the parallel Dijkstra is a quite naive algorithm. The major part parallelized is computation of the node which is currently unmarked and has the minimal distance to source. To operate on one submatrix, we first need to declare an array \verb|loc_known| denoting the currently marked vertices. In next n-1 iterations, we find the vertices with locally minimal distance and reduce this to get the vertex with global minimal distance. Finally, we use this new minimal-distance vertex to update all unmarked vertices. Code for this algorithm is shown below:
+\begin{lstlisting}
+void Dijkstra(int loc_mat[], int loc_dist[], int loc_pred[], int loc_n, int my_rank, int n)
+{
+	int loc_v, *loc_known;
+	loc_known = malloc(loc_n * sizeof(int));
+	for (loc_v = 0; loc_v < loc_n; loc_v++) {
+		loc_dist[loc_v] = loc_mat[0*loc_n + loc_v];
+		loc_known[loc_v] = 0;
+		loc_pred[loc_v] = 0;
+	}
+	if (my_rank == 0)
+	loc_known[0] = 1;
+	for (int j = 1; j < n; j++) {
+		int my_min[2], glbl_min[2];
+		Find_min_loc_dist(loc_dist, loc_known, loc_n, my_min, my_rank);
+		MPI_Allreduce(my_min, glbl_min, 1, MPI_2INT, MPI_MINLOC, MPI_COMM_WORLD);
+		if (my_rank == glbl_min[1]/loc_n) {
+			loc_known[glbl_min[1]%loc_n] = 1;
+		}
+		int new_loc_dist;
+		for (loc_v = 0; loc_v < loc_n; loc_v++) {
+			if (!loc_known[loc_v]) {
+			new_loc_dist = glbl_min[0] + loc_mat[glbl_min[1]*loc_n + loc_v];	
+				if (new_loc_dist < loc_dist[loc_v]) {
+					loc_dist[loc_v] = new_loc_dist;
+					loc_pred[loc_v] = glbl_min[1];
+				}
+			}
+		}
+	}
+	free(loc_known);
+}
+\end{lstlisting}
+\subsubsection{Potential Risks}
+During programming this algorithm, I found that if the graph is complex and edge weight is large, we may suffer from integer overflow. However, this may not be a big issue for data set in this course. To handle this issue, we may introduce a high-precision integer class, which can lead to some overhead.
+
+
+
 \subsection{Steps}
-First, we read the serial algorithm in Dijkstra.c file...\\
-Then we begin to deploy the algorithm on the cluster. We write a slurm script to do run it on multi-progress(1, 2, 4, 8). And we tested and recorded the time expenditure to do further evaluaton.
+First, we read the serial algorithm in Dijkstra.c file to get a rough idea of the Dijkstra algorithm.\\
+Then we begin to deploy the algorithm on the cluster. We write a slurm script to do run it on multi-threads(1, 2, 4, 8). And we tested and recorded the time expenditure to do further evaluation.
 \section{Result \& Analysis}
 \begin{center}
 	\# of input
 \begin{tabular}{lr}
   \begin{tabular}[t]{r|ccccccccccc}
-$\# prog$&10&100&300&400&500&800&1000&2000&3000&4000&5000\\
+$\# proc$&10&100&300&400&500&800&1000&2000&3000&4000&5000\\
 \hline
 1&140&130&150&170&170&240&250&600&1290&2210&2950\\
 2&150&170&180&210&210&270&320&730&1290&1870&2880\\
@@ -35,7 +117,7 @@ $\# prog$&10&100&300&400&500&800&1000&2000&3000&4000&5000\\
   \end{tabular}
  \end{tabular}
 \end{center}
-From these results we can see two important facts: The first is that with the increasement of input, the time consumption increased but not in linear. This may be caused by the IO time, which is considerablely large in this problem. The second is that although the number of progresses increased, the time consumption stays the same. The reason besides IO time may be the most work is done by progress 0, consequently the result is not very good. So the speed-up is 1 and the efficiency is very low. All of these reflects the  imperfection in the algorithm itself.
+From these results we can see two important facts: The first is that with the increment of input, the time consumption increased but not in linear. This may be caused by the IO time, which is considerably large in this problem. The second is that although the number of progresses increased, the time consumption stays the same. The reason besides IO time may be the most work is done by thread 0, consequently the result is not very good. So the speed-up is 1 and the efficiency is very low. All of these reflects the  imperfection in the algorithm itself.
 \end{document}
 
 %%% Local Variables: 

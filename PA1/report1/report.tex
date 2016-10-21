@@ -100,29 +100,46 @@ During programming this algorithm, I found that if the graph is complex and edge
 
 
 
-\subsection{Steps}
-First, we read the serial algorithm in Dijkstra.c file to get a rough idea of the Dijkstra algorithm.\\
-Then we begin to deploy the algorithm on the cluster. We write a slurm script to do run it on multi-threads(1, 2, 4, 8). And we tested and recorded the time expenditure to do further evaluation.
+\subsection{Run It on Cluster}
+After the completion of the whole algortihm, we started to deploy it on the cluster. We utilize \textit{scp} command to transfer files to the cluster. Then log in via \textit{ssh}. After these pre-works, we write the slurm script to submmit the job. The script is shown below:
+\begin{lstlisting}
+#!/bin/bash
+#SBATCH --job-name=mpi_io
+#SBATCH --partition=cpu
+#SBATCH --mail-type=end
+#SBATCH --mail-user=cktonychang@gmail.com
+#SBATCH --ntask-per-node=16
+source /usr/share/Modules/init/bash
+unset MODULEPATH
+module use /lustre/usr/modulefiles/pi
+module purge
+module load gcc openmpic
+
+srun -n $1 --mpi=pmi2 --error=./result/$1_$2.err --output=./result/$1_$2.txt ./mpi_io ./data/$2.txt
+\end{lstlisting}
+Then we run all input files in the test set on 1, 2, 4, 8 progresses respectively and modify the code to record the serial and parallel time.
 \section{Result \& Analysis}
 \begin{center}
-	\# of input
-\begin{tabular}{lr}
-  \begin{tabular}[t]{r|ccccccccccc}
+ \begin{table}
+ \begin{tabular}[t]{r|ccccccccccc}
 $\# proc$&10&100&300&400&500&800&1000&2000&3000&4000&5000\\
 \hline
 1&140&130&150&170&170&240&250&600&1290&2210&2950\\
 2&150&170&180&210&210&270&320&730&1290&1870&2880\\
 4&170&160&170&180&190&230&270&710&1280&2030&2910\\
 8&210&170&260&220&250&270&310&710&1170&1990&2870\\
-  \end{tabular}
- \end{tabular}
+\end{tabular}
+\caption{Serial Time}
+\begin{tabular}[t]{r|ccccccccccc}
+$\# proc$&10&100&300&400&500&800&1000&2000&3000&4000&5000\\
+\hline
+1&0&0&10&0&0&10&10&50&90&150&260\\
+2&0&0&0&0.&0&10&0&30&40&90&140\\
+4&0&0&0&0&0&10&0&20&40&60&90\\
+8&10&0&0&0&0&0&10&10&20&40&50\\
+\end{tabular}
+\caption{parallel Time}
+\end{table}
 \end{center}
-From these results we can see two important facts: The first is that with the increment of input, the time consumption increased but not in linear. This may be caused by the IO time, which is considerably large in this problem. The second is that although the number of progresses increased, the time consumption stays the same. The reason besides IO time may be the most work is done by thread 0, consequently the result is not very good. So the speed-up is 1 and the efficiency is very low. All of these reflects the  imperfection in the algorithm itself.
+From these two tables we can see some important facts: Most of the serial time is used on IO instead of the paralle algorithm. Although the number of progresses increased, the total time consumption stays almost the same. The reason besides IO time may be that most work is done by progress 0. So the speed-up is 1 and the efficiency is very low. All of these reflect the imperfection in the algorithm itself.
 \end{document}
-
-%%% Local Variables: 
-%%% mode: latex
-%%% TeX-master: t
-%%% End: 
-
-

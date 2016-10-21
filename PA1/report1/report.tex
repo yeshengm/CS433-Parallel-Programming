@@ -30,14 +30,17 @@
 \input kvmacros
 \sloppy
 \begin{document}
+
 \title{Programming Assignment 1- Parallel Dijkstra}
 \author{\textit{Ke Chang}\\\textit{Yesheng Ma}}
 \date{Oct 20th, 2016}
+{\bf\small CS433:Parallel Programming}\hfill{\bf\small 2016 Fall}
+{\let\newpage\relax\maketitle}
 \maketitle
 
 
 \begin{abstract}
-	The known Dijkstra algorithm is used to find the single-source shortest path problem. And what we have done in this project is to parallelize it in order to complete the task with higher efficiency.
+The known Dijkstra algorithm is used to find the single-source shortest path problem. And what we have done in this project is to parallelize it in order to complete the task with higher efficiency.
 \end{abstract}
 
 
@@ -101,7 +104,7 @@ During programming this algorithm, I found that if the graph is complex and edge
 
 
 \subsection{Run It on Cluster}
-After the completion of the whole algortihm, we started to deploy it on the cluster. We utilize \textit{scp} command to transfer files to the cluster. Then log in via \textit{ssh}. After these pre-works, we write the slurm script to submmit the job. The script is shown below:
+After the completion of the whole algorithm, we started to deploy it on the cluster. We utilize \textit{scp} command to transfer files to the cluster. Then log in via \textit{ssh}. After these pre-works, we write the slurm script to submit the job. The script is shown below:
 \begin{lstlisting}
 #!/bin/bash
 #SBATCH --job-name=mpi_io
@@ -119,17 +122,25 @@ srun -n $1 --mpi=pmi2 --error=./result/$1_$2.err --output=./result/$1_$2.txt ./m
 \end{lstlisting}
 Then we run all input files in the test set on 1, 2, 4, 8 progresses respectively and modify the code to record the serial and parallel time.
 \section{Result \& Analysis}
-\begin{center}
- \begin{table}
- \begin{tabular}[t]{r|ccccccccccc}
-$\# proc$&10&100&300&400&500&800&1000&2000&3000&4000&5000\\
-\hline
-1&140&130&150&170&170&240&250&600&1290&2210&2950\\
-2&150&170&180&210&210&270&320&730&1290&1870&2880\\
-4&170&160&170&180&190&230&270&710&1280&2030&2910\\
-8&210&170&260&220&250&270&310&710&1170&1990&2870\\
-\end{tabular}
-\caption{Serial Time}
+ \begin{table}[H]
+ 	\begin{tabular}[t]{r|ccccccccccc}
+ 		$\# proc$&10&100&300&400&500&800&1000&2000&3000&4000&5000\\
+ 		\hline
+ 		serial&2&4&19&31&46&113&170&668&1492&2772&4124
+ 	\end{tabular}\caption{Time of serial Dijkstra(ms)}
+ \end{table}
+ \begin{table}[H]
+ 	\begin{tabular}[t]{r|ccccccccccc}
+ 		$\# proc$&10&100&300&400&500&800&1000&2000&3000&4000&5000\\
+ 		\hline
+ 		1&140&130&150&170&170&240&250&600&1290&2210&2950\\
+ 		2&150&170&180&210&210&270&320&730&1290&1870&2880\\
+ 		4&170&160&170&180&190&230&270&710&1280&2030&2910\\
+ 		8&210&170&260&220&250&270&310&710&1170&1990&2870\\
+ 	\end{tabular}\caption{Serial part of parallel Dijkstra(ms)}
+ \end{table}
+
+\begin{table}[H]
 \begin{tabular}[t]{r|ccccccccccc}
 $\# proc$&10&100&300&400&500&800&1000&2000&3000&4000&5000\\
 \hline
@@ -138,8 +149,12 @@ $\# proc$&10&100&300&400&500&800&1000&2000&3000&4000&5000\\
 4&0&0&0&0&0&10&0&20&40&60&90\\
 8&10&0&0&0&0&0&10&10&20&40&50\\
 \end{tabular}
-\caption{parallel Time}
+\caption{Parallel part of parallel Dijkstra(ms)}
 \end{table}
-\end{center}
-From these two tables we can see some important facts: Most of the serial time is used on IO instead of the paralle algorithm. Although the number of progresses increased, the total time consumption stays almost the same. The reason besides IO time may be that most work is done by progress 0. So the speed-up is 1 and the efficiency is very low. All of these reflect the imperfection in the algorithm itself.
+From these two tables we can see some important facts: Most of the serial time is used on IO instead of the parallel algorithm. Although the number of processes increased, the total time consumption stays almost the same. The reason besides IO time may be that most work is done by process 0. So the speed-up is 1 and the efficiency is very low. All of these reflect the imperfection in the algorithm itself. But when we consider the net time used by parallel Dijkstra algorithm with different number of threads, we can see that there is a rough trend that it takes less time for computation.
+
+Another fact is that when we are dealing with small data sets, the running time of parallel Dijkstra is not very short since the overhead of MPI is quite considerable. However, when dealing with large data set with more than 2000 nodes, we find that parallel version of Dijkstra is much faster than serial version, which is what we expected considering the computational complexity these two algorithms.
+
+\section*{Acknowledgement}
+Thanks Prof. Deng for guidance on MPI programming and TAs for configuring cluster and kindly answering questions.
 \end{document}

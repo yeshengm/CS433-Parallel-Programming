@@ -1,0 +1,6 @@
+\frametitle{Log information}
+There are mainly two kinds of information we care about.
+\begin{enumerate}
+	\item Serial time: \verb|sBegin, sEnd|
+	\item Parallel time: \verb|pBegin, pEnd|
+\end{enumerate}

@@ -177,6 +177,34 @@ The implementation itself is quite easy:
 \end{enumerate}
 \end{frame}
 
+\begin{frame}{Deployment on PI}
+There are generally 3 steps to deploy the algorithm on PI:
+\begin{enumerate}
+	\item Add log information in code.
+	\item Write the slurm script.
+	\item Process the output file.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}[fragile]{Log information}
+There are mainly two kinds of information we care about.
+\begin{enumerate}
+	\item Serial time: \verb|sBegin, sEnd|
+	\item Parallel time: \verb|pBegin, pEnd|
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Slurm Script}
+\begin{enumerate}
+	\item Gramar just like common shell script.
+	\item The script reads the input file in order and run each file with 1, 2, 4, 8, 16 processes respectively.
+	\item Save the result in \textit{A\_B.out} file where A is number of progresses and B is input file number.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Process output}
+Write a Python script to process output.  
+\end{frame}
 
 \begin{frame}{Potential Risks}
 Actually, the graph is far from real-world complex networks.
@@ -185,9 +213,6 @@ Actually, the graph is far from real-world complex networks.
 \item May have large edge weights $\Rightarrow$ introduce BigInt like Java
 \end{itemize}
 \end{frame}
-
-
-
 
 
 

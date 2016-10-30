@@ -1,0 +1,202 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Beamer Presentation
+% LaTeX Template
+% Version 1.0 (10/11/12)
+%
+% This template has been downloaded from:
+% http://www.LaTeXTemplates.com
+%
+% License:
+% CC BY-NC-SA 3.0 (http://creativecommons.org/licenses/by-nc-sa/3.0/)
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND THEMES
+%----------------------------------------------------------------------------------------
+
+\documentclass{beamer}
+
+\mode<presentation> {
+
+% The Beamer class comes with a number of default slide themes
+% which change the colors and layouts of slides. Below this is a list
+% of all the themes, uncomment each in turn to see what they look like.
+
+%\usetheme{default}
+%\usetheme{AnnArbor}
+%\usetheme{Antibes}
+%\usetheme{Bergen}
+%\usetheme{Berkeley}
+%\usetheme{Berlin}
+%\usetheme{Boadilla}
+%\usetheme{CambridgeUS}
+%\usetheme{Copenhagen}
+%\usetheme{Darmstadt}
+%\usetheme{Dresden}
+%\usetheme{Frankfurt}
+%\usetheme{Goettingen}
+%\usetheme{Hannover}
+%\usetheme{Ilmenau}
+%\usetheme{JuanLesPins}
+%\usetheme{Luebeck}
+%\usetheme{Madrid}
+%\usetheme{Malmoe}
+%\usetheme{Marburg}
+%\usetheme{Montpellier}
+%\usetheme{PaloAlto}
+\usetheme{Pittsburgh}
+%\usetheme{Rochester}
+%\usetheme{Singapore}
+%\usetheme{Szeged}
+%\usetheme{Warsaw}
+
+% As well as themes, the Beamer class has a number of color themes
+% for any slide theme. Uncomment each of these in turn to see how it
+% changes the colors of your current slide theme.
+
+%\usecolortheme{albatross}
+%\usecolortheme{beaver}
+%\usecolortheme{beetle}
+%\usecolortheme{crane}
+%\usecolortheme{dolphin}
+%\usecolortheme{dove}
+%\usecolortheme{fly}
+%\usecolortheme{lily}
+%\usecolortheme{orchid}
+%\usecolortheme{rose}
+%\usecolortheme{seagull}
+%\usecolortheme{seahorse}
+%\usecolortheme{whale}
+%\usecolortheme{wolverine}
+
+%\setbeamertemplate{footline} % To remove the footer line in all slides uncomment this line
+%\setbeamertemplate{footline}[page number] % To replace the footer line in all slides with a simple slide count uncomment this line
+
+%\setbeamertemplate{navigation symbols}{} % To remove the navigation symbols from the bottom of all slides uncomment this line
+}
+
+\usepackage{graphicx} % Allows including images
+\usepackage{booktabs} % Allows the use of \toprule, \midrule and \bottomrule in tables
+
+%----------------------------------------------------------------------------------------
+%	TITLE PAGE
+%----------------------------------------------------------------------------------------
+
+\title[Short title]{Parallel Dijkstra Algorithm} % The short title appears at the bottom of every slide, the full title is only on the title page
+
+\author{Yesheng Ma\\Ke Chang} % Your name
+\institute[UCLA] % Your institution as it will appear on the bottom of every slide, may be shorthand to save space
+{
+
+}
+\date{\today} % Date, can be changed to a custom date
+
+\begin{document}
+
+\begin{frame}
+\titlepage % Print the title page as the first slide
+\end{frame}
+
+\begin{frame}
+\frametitle{Overview} % Table of contents slide, comment this block out to remove it
+\tableofcontents % Throughout your presentation, if you choose to use \section{} and \subsection{} commands, these will automatically be printed on this slide as an overview of your presentation
+\end{frame}
+
+%----------------------------------------------------------------------------------------
+%	PRESENTATION SLIDES
+%----------------------------------------------------------------------------------------
+
+%------------------------------------------------
+\section{Introduction} 
+
+
+\begin{frame}
+\frametitle{Parallel Dijkstra Algorithm}
+\begin{itemize}
+	\item Similar to serial version
+	\item Exploit parallelism in find the vertex with least distance
+	\item The key idea is just \textbf{map} and \textbf{reduce}
+\end{itemize}
+\end{frame}
+
+\section{Environment}
+\begin{frame}
+\frametitle{Build and Test}
+\begin{itemize}
+\item Use GNUMakefile to relief you from repeating\\
+		\qquad \texttt{make}, \texttt{make clean} etc
+\item Write Bash scripts with command line arguments to test:
+\begin{itemize}
+	\item in batch
+	\item with specified argument
+\end{itemize}
+ 
+\end{itemize}
+\end{frame}
+
+\section{Implementation}
+\begin{frame}{MPI API}
+	\begin{itemize}[<+->]
+		\item \texttt{MPI\_Init}: initialize MPI context
+		\item \texttt{MPI\_Comm\_size}: get size of MPI communication space
+		\item \texttt{MPI\_Comm\_rank}: get the rank of current thread, i.e. \texttt{my\_rank}
+		\item \texttt{MPI\_Allreduce}: similar to reduce in FP(list$\rightarrow$reduced value)
+		\item \texttt{MPI\_Gather}: gather small arrays to form a large one
+	\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Core Implementation}
+\begin{itemize}
+\item Encapsulate parallel Dijkstra algorithm
+\begin{itemize}
+	\item[1.] Pass more arguments to \texttt{Dijkstra} function
+	\item[2.] But reusability and modularity gained
+\end{itemize}
+
+\end{itemize}
+
+\centering
+\begin{verbatim}
+void Dijkstra(int loc_mat[], int loc_dist[], 
+           int loc_pred[], int loc_n, int my_rank, int n);
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Impl Cont'd}
+The implementation itself is quite easy:
+\begin{enumerate}
+	\item Initialization: \verb|loc_dist, loc_known, loc_pred|
+	\item Do n-1 times iteration:
+	\quad \begin{enumerate}
+		\item \verb|Find_min_loc_dist| and store to \verb|my_min|
+		\item do Allreduce to get \verb|glbl_min|
+		\item for all unknown vertices, update if possible
+	\end{enumerate}
+	\item Algorithm finished, print necessary message.
+\end{enumerate}
+\end{frame}
+
+
+\begin{frame}{Potential Risks}
+Actually, the graph is far from real-world complex networks.
+\begin{itemize}
+\item May have wired topological structures $\Rightarrow$ other algorithms
+\item May have large edge weights $\Rightarrow$ introduce BigInt like Java
+\end{itemize}
+\end{frame}
+
+
+
+
+
+
+%------------------------------------------------
+
+\begin{frame}
+\Huge{\centerline{The End}}
+\end{frame}
+
+%----------------------------------------------------------------------------------------
+
+\end{document} 

@@ -1,0 +1,58 @@
+\documentclass{article}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{float}
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{
+	frame=single,
+	language=C,
+	belowskip=3mm,
+	showstringspaces=false,
+	columns=flexible,
+	captionpos=b,
+	basicstyle={\small\ttfamily},
+	numbers=left,
+	numbersep=5pt,
+	%numbers=none,
+	numberstyle=\tiny\color{gray},
+	keywordstyle=\color{blue},
+	commentstyle=\color{dkgreen},
+	stringstyle=\color{mauve},
+	breaklines=true,
+	breakatwhitespace=true,
+	tabsize=4
+}
+
+\input kvmacros
+\sloppy
+\begin{document}
+
+\title{Programming Assignment 2 - N-body Simulation}
+\author{\textit{Yesheng Ma}\\\textit{Ke Chang}}
+\date{November 29th, 2016}
+{\bf\small CS433:Parallel Programming}\hfill{\bf\small 2016 Fall}
+{\let\newpage\relax\maketitle}
+\maketitle
+
+
+\begin{abstract}
+	The n-body problem is a famous problem regarding approximating the motion of particles. The main idea is using the Newtonian gravitational force equation
+	to simulate the motion. In this project, we try to parallelize the n-body simulation program and we will give a benchmark on both the serialized version
+	and parallelized version.
+\end{abstract}
+
+
+\section{Introduction}
+First let's shed a light on what n-body simulation acutally is. An N-body simulation of a dynamic system of particles, usually under the influence of physical
+forces, such as gravity. The default number of particles in the system is $200$ and the user can specify the number of particles by explicitly input an argument
+to	the program. Another important parameter is the number of iterations and the default value is $10000$.
+
+\section{Implementation}
+In the N-body simulation, the core function is \verb|position_step|
+\section*{Acknowledgement}
+Thanks Prof. Deng for guidance on MPI programming and TAs for configuring cluster and kindly answering questions.
+\end{document}

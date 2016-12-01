@@ -51,8 +51,49 @@ First let's shed a light on what n-body simulation acutally is. An N-body simula
 forces, such as gravity. The default number of particles in the system is $200$ and the user can specify the number of particles by explicitly input an argument
 to	the program. Another important parameter is the number of iterations and the default value is $10000$.
 
+
 \section{Implementation}
-In the N-body simulation, the core function is \verb|position_step|
+In the N-body simulation, the core function is \verb|position_step| which calculates the forces of bodies and update the positions of the bodies and 
+we are going to analyze this function both on a sequential manner and parallel manner.
+
+\subsection{Sequential Version of \texttt{position\_step}}
+The sequential version of function \verb|position_step| is rather simple.
+What it does is update the positions of each body in this world:
+\begin{enumerate}
+\item Allocate memory for \verb|force_x| and \verb|force_y| and initialize them to 0.
+\item Compute the force on each body. Since each body has a force on all other bodies except itself, thus this computation is a two-level loop. In the outer loop we traverse all the bodies and in the inner loop we traverse all the body except the $i$th body.
+\item Update the velocity and position of each body according to related physical laws.
+\end{enumerate}
+
+
+\subsection{Parallel Version of \texttt{position\_step}}
+The process of parallelizing the \verb|position_step| function is quite
+similar to what we have done in the previous project to parallelize
+Dijkstra's shortest path algorithm. The only different part is that in the
+previous project, we use MPI to accomplish parallelism and this time we use
+OpenMP.
+
+The main idea is just partition all the bodies by the number of available
+threads and make the computation of the force array parallelized. Also, the
+computation of update position and velocity can also be parallelized
+together with the computation of force. The key ideas are listed as follows:
+\begin{enumerate}
+	\item Use the compile-time macro \verb|#pragma omp parallel num_threads(thread_count|
+\end{enumerate}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 \section*{Acknowledgement}
 Thanks Prof. Deng for guidance on MPI programming and TAs for configuring cluster and kindly answering questions.
 \end{document}

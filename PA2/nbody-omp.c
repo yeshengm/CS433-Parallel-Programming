@@ -13,6 +13,10 @@
 #include <X11/Xlib.h>
 #include <unistd.h>
 
+
+// include openMP header
+#include <omp.h>
+
 #define WIDTH 1024
 #define HEIGHT 768
 
@@ -152,10 +156,7 @@ void collision_step(struct world *world) {
     }
 }
 
-void position_step(struct world *world, double time_res) {
-    int i, j;
-    double d, d_cubed, diff_x, diff_y;
-
+void position_step(struct world *world, double time_res, int thread_count) {
     /* The forces array stores the x and y components of the total force acting
      * on each body. The forces are index like this:
      *     F on body i in the x dir = F_x[i]
@@ -167,48 +168,61 @@ void position_step(struct world *world, double time_res) {
 	force_y = memset(force_y, 0, sizeof(double) * world->num_bodies);
 
     /* Compute the net force on each body */
-    for (i = 0; i < world->num_bodies; i++) {
-        for (j = 0; j < world->num_bodies; j++) {
-            if (i == j) {
-                continue;
-            }
-            // Compute the x and y distances and total distance d between
-            // bodies i and j
-            diff_x = world->bodies[j].x - world->bodies[i].x;
-            diff_y = world->bodies[j].y - world->bodies[i].y;
-            d = sqrt((diff_x * diff_x) + (diff_y * diff_y));
+#	pragma omp parallel num_threads(thread_count)
+	{
+		int i, j, loc_i;
+		double d, d_cubed, diff_x, diff_y;
+		int my_rank = omp_get_thread_num();
+		int loc_num_bodies = world->num_bodies / thread_count;
+		int loc_base_idx = my_rank * loc_num_bodies;
 
-			if (d < 25) {
-                d = 25;
-            }
-            d_cubed = d * d * d;
-            // Add force due to j to total force on i
-            force_x[i] += GRAV * (world->bodies[i].m * world->bodies[j].m
-                    / d_cubed) * diff_x;
-            force_y[i] += GRAV * (world->bodies[i].m * world->bodies[j].m
-                    / d_cubed) * diff_y;
-        }
-    }
+		for (loc_i = 0; loc_i < loc_num_bodies; ++loc_i) {
+			for (j = 0; j < world->num_bodies; ++j) {
+				i = loc_base_idx + loc_i;
+				if (i == j)
+					continue;
+				// Compute the x and y distances and total distance d between
+				// bodies i and j
+				diff_x = world->bodies[j].x - world->bodies[i].x;
+				diff_y = world->bodies[j].y - world->bodies[i].y;
+				d = sqrt((diff_x * diff_x) + (diff_y * diff_y));
 
-    // Update the velocity and position of each body
-	
-    for (i = 0; i < world->num_bodies; i++) {
-        // Update velocities
-        world->bodies[i].vx += force_x[i] * time_res / world->bodies[i].m;
-        world->bodies[i].vy += force_y[i] * time_res / world->bodies[i].m;		
+				if (d < 25) {
+					d = 25;
+				}
+				d_cubed = d * d * d;
+				// Add force due to j to total force on i
+				force_x[i] += GRAV * (world->bodies[i].m * world->bodies[j].m
+						/ d_cubed) * diff_x;
+				force_y[i] += GRAV * (world->bodies[i].m * world->bodies[j].m
+						/ d_cubed) * diff_y;
+			}
+		}
 		
-        // Update positions
-        world->bodies[i].x += world->bodies[i].vx * time_res;
-        world->bodies[i].y += world->bodies[i].vy * time_res;
-    }	
+		// Update the velocity and position of each body
+		for (loc_i = 0; loc_i < loc_num_bodies; loc_i++) {
+			i = loc_base_idx + loc_i;
+
+			// Update velocities
+			world->bodies[i].vx += force_x[i] * time_res / world->bodies[i].m;
+			world->bodies[i].vy += force_y[i] * time_res / world->bodies[i].m;		
+			
+			// Update positions
+			world->bodies[i].x += world->bodies[i].vx * time_res;
+			world->bodies[i].y += world->bodies[i].vy * time_res;
+		}	
+	}
+
+
+
 }
 
-void step_world(struct world *world, double time_res) {
+void step_world(struct world *world, double time_res, int thread_count) {
 	
 	struct tms ttt;
 	clock_t start, end;
 	start = times(&ttt);
-    position_step(world, time_res);
+    position_step(world, time_res, thread_count);
 	end = times(&ttt);
 	total_time += end - start;
 
@@ -222,7 +236,9 @@ int main(int argc, char **argv) {
 	//total_time.tv_usec = 0;
     /* get num bodies from the command line */
     int num_bodies;
-    num_bodies = (argc == 2) ? atoi(argv[1]) : DEF_NUM_BODIES;
+	int thread_count;
+	num_bodies = (argc == 3) ? atoi(argv[1]) : DEF_NUM_BODIES;
+	thread_count = (argc == 3) ? atoi(argv[2]) : 1;
     printf("Universe has %d bodies.\n", num_bodies);
 
     /* set up the universe */
@@ -281,7 +297,7 @@ int main(int argc, char **argv) {
         XCopyArea(disp, back_buf, win, gc, 0, 0, WIDTH, HEIGHT, 0, 0);
 #endif
 
-        step_world(world, delta_t);
+        step_world(world, delta_t, thread_count);
 
 		//if you want to watch the process in 60 FPS
         // nanosleep(&delay, &remaining);

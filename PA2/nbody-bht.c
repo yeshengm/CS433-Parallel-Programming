@@ -18,6 +18,12 @@
 
 #include <omp.h>
 
+
+#ifndef max
+    #define max(a,b) ((a) > (b) ? (a) : (b))
+#endif
+
+
 #define WIDTH 1024
 #define HEIGHT 768
 #define THETA 0.05
@@ -37,9 +43,9 @@
 //  if C_REST = 1 -> perfectly elastic (no loss of speed)
 #define C_REST 0.5
 // set the iteration times
-#define iteration_times 1000    
+#define iteration_times 200    
 // Must set 0 if run on Pi
-#define NOT_RUN_ON_PI 1
+#define NOT_RUN_ON_PI 0
 
 struct body {
     double x, y; // position
@@ -49,100 +55,93 @@ struct body {
 };
 
 
-struct Quad {
+struct PosInfo {
     double x, y;
     double width, height;
 };
 
+struct QuadTree {
+	struct body massCenter;
+	struct PosInfo quad;
+	struct QuadTree *pNorthWest;
+	struct QuadTree *pNorthEast;
+	struct QuadTree *pSouthWest;
+	struct QuadTree *pSouthEast;
+};
 
-void initQ(struct Quad *q, double a, double b, double c, double d){
-    // printf("x %lf, y %lf, width %lf, height %lf\n", q->x, q->y, q->width, q->height);
+void initQuad(struct PosInfo *q, double a, double b, double c, double d){
     q->x = a;
     q->y = b;
     q->width = c;
     q->height = d;
 };
 
-bool contains(struct Quad *q, double a, double b) {
-	if (a >= q->x && b >= q->y && a < q->x + q->width && b < q->y + q->height) return true;
-	return false;
-}
 
-
-struct QuadTree {
-	struct body body;
-	struct Quad quad;
-	struct QuadTree *pNorthWest;
-	struct QuadTree *pNorthEast;
-	struct QuadTree *pSouthWest;
-	struct QuadTree *pSouthEast;
-
-};
-
-void QuadTreeInit(struct QuadTree *p, struct Quad q) {
+void QuadTreeInit(struct QuadTree *p, struct PosInfo q) {
     memset(p, 0, sizeof(struct QuadTree));
     p->quad = q;
 }
 
-void insert_to_child(struct QuadTree *p, struct body b);
+void insertToNonLeaf(struct QuadTree *p, struct body b);
+
+void updateMassCenter(struct QuadTree *p, struct body b) {
+    p->massCenter.m += b.m;
+	p->massCenter.x = (p->massCenter.x + b.x * b.m) / p->massCenter.m;
+	p->massCenter.y = (p->massCenter.y + b.y * b.m) / p->massCenter.m;
+}
+
+bool isLeaf(struct QuadTree *p) {
+    return p->pNorthWest==NULL && p->pNorthEast==NULL && p->pSouthWest==NULL && p->pSouthEast==NULL;
+}
 
 void insert(struct QuadTree *p, struct body b) {
-	//printf("%f\n", b.x);
-	struct body a = p->body;
-	p->body.m += b.m;
-	p->body.x = (p->body.x + b.x * b.m) / p->body.m;
-	p->body.y = (p->body.y + b.y * b.m) / p->body.m;
+	struct body a = p->massCenter;
+	updateMassCenter(p, b);
 	if (a.m == 0) {
-	} else if (!(p->pNorthWest == NULL && p->pNorthEast == NULL && p->pSouthWest == NULL & p->pSouthEast == NULL)) {
-		insert_to_child(p, b);
+	} else if (!isLeaf(p)) {
+		insertToNonLeaf(p, b);
 	} else {
-		insert_to_child(p, a);
-		insert_to_child(p, b);
+		insertToNonLeaf(p, a);
+		insertToNonLeaf(p, b);
 	}
 }
 
-void insert_to_child(struct QuadTree *p, struct body b){
-	struct Quad *q = malloc(sizeof(struct Quad));
-	if (b.x < p->quad.x + p->quad.width / 2) {
-		if(b.y < p->quad.y + p->quad.height / 2) {
-			if(p->pSouthWest == NULL) {
-				p->pSouthWest = malloc(sizeof(struct QuadTree));
-				initQ(q, p->quad.x, p->quad.y, p->quad.width/2,
-						p->quad.height/2); 
-				QuadTreeInit(p->pSouthWest, *q);
-			}
-			insert(p->pSouthWest, b);
-		} else {
-			if(p->pNorthWest == NULL) {
-				p->pNorthWest = malloc(sizeof(struct QuadTree));
-				initQ(q, p->quad.x, p->quad.y + p->quad.height/2, p->quad.width/2,
-						p->quad.height/2); 
-				QuadTreeInit(p->pNorthWest, *q);
-			}
-			insert(p->pNorthWest, b);
+void insertToNonLeaf(struct QuadTree *p, struct body b){
+	struct PosInfo *q = malloc(sizeof(struct PosInfo));
+	
+	// four cases: nw, ne, sw, se
+	if (b.x < p->quad.x + p->quad.width / 2 && b.y < p->quad.y + p->quad.height / 2) {
+	    if(p->pSouthWest == NULL) {
+			p->pSouthWest = malloc(sizeof(struct QuadTree));
+			initQuad(q, p->quad.x, p->quad.y, p->quad.width/2,
+					p->quad.height/2); 
+			QuadTreeInit(p->pSouthWest, *q);
 		}
-	} else {
-		if(b.y < p->quad.y + p->quad.height / 2) {
-			if(p->pSouthEast == NULL) {
-				p->pSouthEast = malloc(sizeof(struct QuadTree));
-				initQ(q, p->quad.x+p->quad.width/2, p->quad.y, p->quad.width/2,
-						p->quad.height/2); 
-				QuadTreeInit(p->pSouthEast, *q);
-			}
-			insert(p->pSouthEast, b);
-		} else {
-			if(p->pNorthEast == NULL) {
-				p->pNorthEast = malloc(sizeof(struct QuadTree));
-				initQ(q, p->quad.x + p->quad.width/2, p->quad.y + p->quad.height/2, p->quad.width/2,
-						p->quad.height/2); 
-				QuadTreeInit(p->pNorthEast, *q);
-			}
-			/*printf("m is %f\n", b.m);
-			printf("x, y is %f %f\n", b.x, b.y);
-			printf("Select pNorthEast\n");
-			*/
-			insert(p->pNorthEast, b);
+		insert(p->pSouthWest, b);
+	} else if (b.x < p->quad.x + p->quad.width / 2 && b.y >= p->quad.y + p->quad.height / 2) {
+		if(p->pNorthWest == NULL) {
+		p->pNorthWest = malloc(sizeof(struct QuadTree));
+		initQuad(q, p->quad.x, p->quad.y + p->quad.height/2, p->quad.width/2,
+				p->quad.height/2); 
+		QuadTreeInit(p->pNorthWest, *q);
+	    }
+	    insert(p->pNorthWest, b);
+	} else if (b.x >= p->quad.x + p->quad.width / 2 && b.y < p->quad.y + p->quad.height / 2) {
+	    if(p->pSouthEast == NULL) {
+			p->pSouthEast = malloc(sizeof(struct QuadTree));
+			initQuad(q, p->quad.x+p->quad.width/2, p->quad.y, p->quad.width/2,
+					p->quad.height/2); 
+			QuadTreeInit(p->pSouthEast, *q);
 		}
+		insert(p->pSouthEast, b);
+	} else if (b.x >= p->quad.x + p->quad.width / 2 && b.y >= p->quad.y + p->quad.height / 2) {
+	    if(p->pNorthEast == NULL) {
+			p->pNorthEast = malloc(sizeof(struct QuadTree));
+			initQuad(q, p->quad.x + p->quad.width/2, p->quad.y + p->quad.height/2, p->quad.width/2,
+					p->quad.height/2); 
+			QuadTreeInit(p->pNorthEast, *q);
+		}
+		insert(p->pNorthEast, b);
 	}
 	free(q);
 }
@@ -153,19 +152,15 @@ struct world {
     int num_bodies;
 };
 
-double max(double x, double y){if (x < y) return y; return x;}
-
-void ooforce(struct body a, struct body b, double *fx, double *fy);
+void updateForce(struct body a, struct body b, double *fx, double *fy);
 
 void computeForce(struct body b, struct QuadTree *tree, double *fx, double *fy) {
 	double s = max(tree->quad.width, tree->quad.height);
-	double d = sqrt(pow(tree->body.x-b.x,2) + pow(tree->body.y-b.y,2));
-	bool isleaf = tree->pNorthWest == NULL && tree->pNorthEast == NULL && tree->pSouthWest == NULL &&
-		tree->pSouthEast == NULL;
-	if (isleaf && tree->body.x == b.x && tree->body.y == b.y) {
-		// same body
-	} else if (s / d < THETA || isleaf){
-		ooforce(b, tree->body, fx, fy);
+	double d = sqrt(pow(tree->massCenter.x-b.x,2) + pow(tree->massCenter.y-b.y,2));
+	if (isLeaf(tree) && tree->massCenter.x == b.x && tree->massCenter.y == b.y) {
+		return;
+	} else if (s/d < THETA || isLeaf(tree)){
+		updateForce(b, tree->massCenter, fx, fy);
 	} else {
 		if (tree->pSouthEast != NULL) computeForce(b, tree->pSouthEast, fx, fy);
 		if (tree->pNorthWest != NULL) computeForce(b, tree->pNorthWest, fx, fy);
@@ -174,7 +169,7 @@ void computeForce(struct body b, struct QuadTree *tree, double *fx, double *fy) 
 	}
 }
 
-void ooforce(struct body a, struct body b, double *fx, double *fy) {
+void updateForce(struct body a, struct body b, double *fx, double *fy) {
 	// Compute the x and y distances and total distance d between
 	// bodies i and j
 	double diff_x = b.x - a.x;
@@ -311,8 +306,8 @@ void position_step(struct world *world, double time_res, int thread_count) {
     force_x = memset(force_x, 0, sizeof(double) * world->num_bodies);
 	force_y = memset(force_y, 0, sizeof(double) * world->num_bodies);
 
-	struct Quad *q = malloc(sizeof(struct Quad));
-	initQ(q, 0, 0, WIDTH, HEIGHT);
+	struct PosInfo *q = malloc(sizeof(struct PosInfo));
+	initQuad(q, 0, 0, WIDTH, HEIGHT);
 	world->tree = malloc(sizeof(struct QuadTree));
 	QuadTreeInit(world->tree, *q);
 
@@ -323,7 +318,6 @@ void position_step(struct world *world, double time_res, int thread_count) {
 	# pragma omp parallel num_threads(thread_count) 
 	{
 		int my_rank = omp_get_thread_num();
-		int thread_count = omp_get_num_threads();
 
 		int loc_num_bodies = world->num_bodies / thread_count;
 		int loc_base = loc_num_bodies * my_rank;
@@ -370,9 +364,8 @@ int main(int argc, char **argv) {
     /* get num bodies from the command line */
     int num_bodies;
     num_bodies = (argc == 3) ? atoi(argv[1]) : DEF_NUM_BODIES;
-    int thread_count = (argc == 3) ? atoi(argv[2]):1;
+    int thread_count = (argc == 3) ? atoi(argv[2]) : 1;
 	printf("Universe has %d bodies.\n", num_bodies);
-	printf("%d threads \n", thread_count);
 
     /* set up the universe */
     time_t cur_time;

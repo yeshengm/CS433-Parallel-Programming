@@ -1,15 +1,15 @@
 #!/bin/bash
 
 #SBATCH --job-name=cudabench
-#SBATCH --partition=gpu
+#SBATCH --partition=k80
 #SBATCH --gres=gpu:1
-#SBATCH --output=result.out
+#SBATCH --output=k80.out
 #SBATCH --error=log.err
 
-source /urs/share/Modules/init/bash
+source /usr/share/Modules/init/bash
 unset MODULEPATH
-module use /lustre/usr/modulfiles/pi
+module use /lustre/usr/modulefiles/pi
 module purge
 module load gcc cuda
 
-./a.out
+./mat

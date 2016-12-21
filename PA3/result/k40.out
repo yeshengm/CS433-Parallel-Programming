@@ -1,0 +1,15 @@
+===================
+Matrix: 1024 * 1024
+Grid:   32 * 32 * 1
+Block:  32 * 32 * 1
+===================
+
+Naive CPU: 4.593739
+
+Naive GPU: 0.129033
+
+Shared GPU: 0.093992
+
+SharedwBC GPU: 0.067158
+
+Unrolled GPU: 0.054017

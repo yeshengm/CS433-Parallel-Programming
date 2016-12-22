@@ -42,7 +42,7 @@ __global__ void matrixTransposeShared(float *_a, float *_b, int cols, int rows)
         _b[ti*rows+tj] = mat[threadIdx.y][threadIdx.x];
 }
 
-/* shared memory without bank conflict */
+/* loop unrolled */
 __global__ void matrixTransposeUnrolled(float *_a, float *_b, int cols, int rows)
 {
     __shared__ float mat[P][P+1];
@@ -66,7 +66,7 @@ __global__ void matrixTransposeUnrolled(float *_a, float *_b, int cols, int rows
     }
 }
 
-/* loop unrolled */
+/* shared memory without bank conflict */
 __global__ void matrixTransposeSharedwBC(float *_a, float *_b, int cols, int rows)
 {
     __shared__ float mat[P][P+1];
@@ -194,3 +194,147 @@ int main(int argc, char **argv)
     return 0;
 }
 
+
+
+times in msec
+ clock   self+sourced   self:  sourced script
+ clock   elapsed:              other lines
+
+000.003  000.003: --- VIM STARTING ---
+000.076  000.073: Allocated generic buffers
+000.107  000.031: locale set
+000.121  000.014: GUI prepared
+000.125  000.004: clipboard setup
+000.129  000.004: window checked
+000.465  000.336: inits 1
+000.469  000.004: parsing arguments
+000.470  000.001: expanding arguments
+000.478  000.008: shell init
+002.897  002.419: xsmp init
+003.176  000.279: Termcap init
+003.228  000.052: inits 2
+003.369  000.141: init highlight
+003.691  000.227  000.227: sourcing /usr/share/vim/vim74/debian.vim
+004.014  000.184  000.184: sourcing /usr/share/vim/vim74/syntax/syncolor.vim
+004.112  000.330  000.146: sourcing /usr/share/vim/vim74/syntax/synload.vim
+026.463  000.811  000.811: sourcing /home/manifold/.vim/ftdetect/scala.vim
+026.630  022.479  021.668: sourcing /usr/share/vim/vim74/filetype.vim
+026.663  022.931  000.122: sourcing /usr/share/vim/vim74/syntax/syntax.vim
+026.684  023.273  000.115: sourcing $VIM/vimrc
+026.865  000.007  000.007: sourcing /usr/share/vim/vim74/filetype.vim
+026.905  000.006  000.006: sourcing /usr/share/vim/vim74/filetype.vim
+026.971  000.034  000.034: sourcing /usr/share/vim/vim74/ftplugin.vim
+027.021  000.007  000.007: sourcing /usr/share/vim/vim74/filetype.vim
+027.084  000.030  000.030: sourcing /usr/share/vim/vim74/indent.vim
+027.359  000.214  000.214: sourcing /usr/share/vim/vim74/syntax/nosyntax.vim
+027.599  000.155  000.155: sourcing /usr/share/vim/vim74/syntax/syncolor.vim
+027.684  000.293  000.138: sourcing /usr/share/vim/vim74/syntax/synload.vim
+027.710  000.591  000.084: sourcing /usr/share/vim/vim74/syntax/syntax.vim
+028.069  000.161  000.161: sourcing /usr/share/vim/vim74/syntax/syncolor.vim
+028.850  000.162  000.162: sourcing /usr/share/vim/vim74/syntax/syncolor.vim
+029.118  000.154  000.154: sourcing /usr/share/vim/vim74/syntax/syncolor.vim
+031.072  002.961  002.645: sourcing /home/manifold/.vim/colors/solarized.vim
+031.662  000.219  000.219: sourcing /home/manifold/.vim/bundle/Vundle.vim/autoload/vundle.vim
+031.877  000.146  000.146: sourcing /home/manifold/.vim/bundle/Vundle.vim/autoload/vundle/config.vim
+032.780  006.075  001.913: sourcing $HOME/.vimrc
+032.784  000.067: sourcing vimrc file(s)
+033.106  000.226  000.226: sourcing /home/manifold/.vim/bundle/YouCompleteMe/plugin/youcompleteme.vim
+033.380  000.066  000.066: sourcing /usr/share/vim/vim74/plugin/getscriptPlugin.vim
+033.612  000.221  000.221: sourcing /usr/share/vim/vim74/plugin/gzip.vim
+033.841  000.217  000.217: sourcing /usr/share/vim/vim74/plugin/logiPat.vim
+034.023  000.170  000.170: sourcing /usr/share/vim/vim74/plugin/matchparen.vim
+034.572  000.536  000.536: sourcing /usr/share/vim/vim74/plugin/netrwPlugin.vim
+034.637  000.037  000.037: sourcing /usr/share/vim/vim74/plugin/rrhelper.vim
+034.680  000.023  000.023: sourcing /usr/share/vim/vim74/plugin/spellfile.vim
+034.844  000.150  000.150: sourcing /usr/share/vim/vim74/plugin/tarPlugin.vim
+034.944  000.082  000.082: sourcing /usr/share/vim/vim74/plugin/tohtml.vim
+035.122  000.156  000.156: sourcing /usr/share/vim/vim74/plugin/vimballPlugin.vim
+035.324  000.177  000.177: sourcing /usr/share/vim/vim74/plugin/zipPlugin.vim
+035.406  000.561: loading plugins
+035.447  000.041: loading packages
+036.154  000.707: inits 3
+036.161  000.007: reading viminfo
+037.928  001.767: setup clipboard
+037.936  000.008: setting raw mode
+037.944  000.008: start termcap
+038.013  000.069: clearing screen
+038.424  000.411: opening buffers
+038.493  000.069: BufEnter autocommands
+038.495  000.002: editing files in windows
+066.236  027.599  027.599: sourcing /home/manifold/.vim/bundle/YouCompleteMe/autoload/youcompleteme.vim
+216.925  150.831: VimEnter autocommands
+216.929  000.004: before starting main loop
+218.066  001.137: first screen update
+218.069  000.003: --- VIM STARTED ---
+
+
+times in msec
+ clock   self+sourced   self:  sourced script
+ clock   elapsed:              other lines
+
+000.006  000.006: --- VIM STARTING ---
+000.075  000.069: Allocated generic buffers
+000.106  000.031: locale set
+000.121  000.015: GUI prepared
+000.125  000.004: clipboard setup
+000.129  000.004: window checked
+000.492  000.363: inits 1
+000.497  000.005: parsing arguments
+000.498  000.001: expanding arguments
+000.507  000.009: shell init
+002.260  001.753: xsmp init
+002.516  000.256: Termcap init
+002.566  000.050: inits 2
+002.680  000.114: init highlight
+003.029  000.276  000.276: sourcing /usr/share/vim/vim74/debian.vim
+003.380  000.199  000.199: sourcing /usr/share/vim/vim74/syntax/syncolor.vim
+003.489  000.361  000.162: sourcing /usr/share/vim/vim74/syntax/synload.vim
+027.930  000.806  000.806: sourcing /home/manifold/.vim/ftdetect/scala.vim
+028.072  024.542  023.736: sourcing /usr/share/vim/vim74/filetype.vim
+028.106  025.032  000.129: sourcing /usr/share/vim/vim74/syntax/syntax.vim
+028.126  025.417  000.109: sourcing $VIM/vimrc
+028.329  000.007  000.007: sourcing /usr/share/vim/vim74/filetype.vim
+028.369  000.006  000.006: sourcing /usr/share/vim/vim74/filetype.vim
+028.434  000.034  000.034: sourcing /usr/share/vim/vim74/ftplugin.vim
+028.473  000.006  000.006: sourcing /usr/share/vim/vim74/filetype.vim
+028.579  000.029  000.029: sourcing /usr/share/vim/vim74/indent.vim
+028.861  000.223  000.223: sourcing /usr/share/vim/vim74/syntax/nosyntax.vim
+029.081  000.147  000.147: sourcing /usr/share/vim/vim74/syntax/syncolor.vim
+029.168  000.275  000.128: sourcing /usr/share/vim/vim74/syntax/synload.vim
+029.194  000.581  000.083: sourcing /usr/share/vim/vim74/syntax/syntax.vim
+029.568  000.163  000.163: sourcing /usr/share/vim/vim74/syntax/syncolor.vim
+030.352  000.161  000.161: sourcing /usr/share/vim/vim74/syntax/syncolor.vim
+030.627  000.155  000.155: sourcing /usr/share/vim/vim74/syntax/syncolor.vim
+032.594  002.983  002.667: sourcing /home/manifold/.vim/colors/solarized.vim
+033.186  000.224  000.224: sourcing /home/manifold/.vim/bundle/Vundle.vim/autoload/vundle.vim
+033.401  000.147  000.147: sourcing /home/manifold/.vim/bundle/Vundle.vim/autoload/vundle/config.vim
+034.311  006.147  001.967: sourcing $HOME/.vimrc
+034.315  000.071: sourcing vimrc file(s)
+034.642  000.232  000.232: sourcing /home/manifold/.vim/bundle/YouCompleteMe/plugin/youcompleteme.vim
+034.887  000.066  000.066: sourcing /usr/share/vim/vim74/plugin/getscriptPlugin.vim
+035.123  000.222  000.222: sourcing /usr/share/vim/vim74/plugin/gzip.vim
+035.354  000.219  000.219: sourcing /usr/share/vim/vim74/plugin/logiPat.vim
+035.536  000.169  000.169: sourcing /usr/share/vim/vim74/plugin/matchparen.vim
+036.088  000.539  000.539: sourcing /usr/share/vim/vim74/plugin/netrwPlugin.vim
+036.154  000.037  000.037: sourcing /usr/share/vim/vim74/plugin/rrhelper.vim
+036.199  000.022  000.022: sourcing /usr/share/vim/vim74/plugin/spellfile.vim
+036.364  000.151  000.151: sourcing /usr/share/vim/vim74/plugin/tarPlugin.vim
+036.465  000.082  000.082: sourcing /usr/share/vim/vim74/plugin/tohtml.vim
+036.619  000.140  000.140: sourcing /usr/share/vim/vim74/plugin/vimballPlugin.vim
+036.824  000.181  000.181: sourcing /usr/share/vim/vim74/plugin/zipPlugin.vim
+036.905  000.530: loading plugins
+036.952  000.047: loading packages
+037.490  000.538: inits 3
+037.499  000.009: reading viminfo
+039.415  001.916: setup clipboard
+039.424  000.009: setting raw mode
+039.431  000.007: start termcap
+039.495  000.064: clearing screen
+040.010  000.515: opening buffers
+040.081  000.071: BufEnter autocommands
+040.083  000.002: editing files in windows
+067.644  027.477  027.477: sourcing /home/manifold/.vim/bundle/YouCompleteMe/autoload/youcompleteme.vim
+221.340  153.780: VimEnter autocommands
+221.345  000.005: before starting main loop
+222.610  001.265: first screen update
+222.634  000.024: --- VIM STARTED ---
